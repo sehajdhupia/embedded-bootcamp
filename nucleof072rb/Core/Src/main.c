@@ -31,6 +31,9 @@
 /* USER CODE END PTD */
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ADC_MAX_VALUE 1023
+#define PWM_BASE_VALUE 3200
+#define PWM_SCALE_FACTOR 3200
 /* USER CODE END PD */
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
@@ -70,6 +73,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
 
+  /* initialize Chip Select (CS) pin */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
+
+  /* set initial PWM duty cycle */
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, PWM_BASE_VALUE);
+
+
   /* Start PWM */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
@@ -77,9 +87,9 @@ int main(void)
   while (1)
   {
     /* USER CODE BEGIN WHILE */
-    uint16_t send_data[3] = {1, 8, 0};  // 1 signal bit, 1 differential bit set to 1
-    uint16_t read_adc[3] = {0, 0, 0};
-    uint32_t timer_cutoff = 3200;
+	uint8_t send_data[3] = {1, 8, 0};  // changed to byte
+	uint8_t read_adc[3] = {0, 0, 0};
+	uint32_t timer_cutoff = PWM_BASE_VALUE; //includes defined value
 
     //set Chip Select
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
@@ -87,14 +97,14 @@ int main(void)
     //SPI communication: transmit and receive data
     HAL_SPI_TransmitReceive(&hspi1, send_data, read_adc, 3, HAL_MAX_DELAY);
 
-    //extract ADC data (last 10 bits)
-    *read_adc = *read_adc & 0x03FF;  // Clear first 6 bits
+    //extract ADC data (last 10 bits). Changed it from the dereferencing pointer.
+    uint16_t adc_value = ((read_adc[1] & 0x03) << 8) | read_adc[2];
 
     //reset Chip Select
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
 
     //map ADC value to timer cutoff range for PWM
-    timer_cutoff = (((int)(*read_adc) / 1023) * 3200) + 3200;  // Calculate PWM duty cycle
+    timer_cutoff = ((adc_value * PWM_SCALE_FACTOR) / ADC_MAX_VALUE) + PWM_BASE_VALUE; //Including constants
     TIM1->CCR1 = timer_cutoff;  // Set the PWM
 
     //use HAL macro to set PWM using HAL_TIM_PWM_Start
