@@ -105,7 +105,8 @@ int main(void)
 
     //map ADC value to timer cutoff range for PWM
     timer_cutoff = ((adc_value * PWM_SCALE_FACTOR) / ADC_MAX_VALUE) + PWM_BASE_VALUE; //Including constants
-    TIM1->CCR1 = timer_cutoff;  // Set the PWM
+
+    //removed setting the CCR
 
     //use HAL macro to set PWM using HAL_TIM_PWM_Start
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, timer_cutoff);
